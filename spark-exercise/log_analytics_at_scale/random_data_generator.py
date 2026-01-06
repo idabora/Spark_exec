@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import pandas as pd
 import random
 
 # print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -69,6 +70,23 @@ def generate_response_time(lines):
         response_time.append(random.randint(100, 500))
     # print(response_time)
     return response_time
+
+
+def create_append_logs(lines):
+    """timestamp, user_id, ip, endpoint, response_code, response_time"""
+    endpoints, response_codes = generate_endpoint_and_resp_codes(lines)
+
+    pd_dataframe = pd.DataFrame({
+        "timestamp": random_timstamps(lines),
+        "ip": generate_ip(lines),
+        "endpoint": endpoints,
+        "response_codes": response_codes,
+        "response_time": generate_response_time(lines)
+    })
+
+    # print(pd_dataframe)
+    pd_dataframe.to_csv("data/my_logs.csv", mode='a', index=False, header=not os.path.isfile("data/my_logs.csv"))
+
 
 # random_timstamps(100)
 # generate_ip(100)
