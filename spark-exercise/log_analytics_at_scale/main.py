@@ -2,7 +2,16 @@ from pyspark.sql import SparkSession, Window
 from pyspark.sql.functions import to_date, col, desc, asc, dense_rank, avg
 from pyspark.sql.types import StructField, StructType, StringType, IntegerType, DateType
 
-spark = SparkSession.builder.appName("log_analytics").getOrCreate()
+spark = (
+    SparkSession.builder
+    .appName("log_analytics")
+    .config("spark.hadoop.io.native.lib.available", "false")
+    .config("spark.hadoop.fs.permissions.enabled", "false")
+    .config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")
+    .getOrCreate()
+)
+
+spark.conf.set("spark.hadoop.io.native.lib.available", "false")
 
 logs_schema = StructType(
     [
@@ -26,14 +35,21 @@ wind_spec = Window.partitionBy("date").orderBy(col("count").desc())
 resultant_df = logs_with_endpoint_count.withColumn(
     "rank", dense_rank().over(wind_spec)
 ).filter(col("rank") <= 10)
-resultant_df.show()
+
+resultant_df.coalesce(1).write \
+    .mode("overwrite") \
+    .option("header", "true") \
+    .parquet("results/most_visited_endpoints")
+# resultant_df.show()
 # resultant_df.show(n=resultant_df.count())
 
 
 """ Average & P95 response time per endpoint """
-logs_df.groupBy("endpoint").agg(
+avg_endpoint = logs_df.groupBy("endpoint").agg(
     avg(col("response_time")).alias("avg_response_time")
-).show()
+)
+avg_endpoint.write\
+    .mode("overwrite")\
+    .option("header", "true")\
+    .parquet("results/response_time_per_endpoint")
 
-
-""" Detect IPs making >1000 requests/hour """
